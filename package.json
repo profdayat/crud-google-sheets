@@ -17,5 +17,8 @@
     "jsonwebtoken": "^9.0.2",
     "serverless-http": "^3.2.0",
     "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "netlify-cli": "^18.0.3"
   }
 }
