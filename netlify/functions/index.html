@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CRUD Google Sheets dengan Node.js</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- CDN Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    .bg-soft {
+      background-color: #f7fafc;
+    }
+  </style>
+</head>
+<body class="bg-soft">
+    <!-- Header -->
+  <header class="bg-blue-500 text-white p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold">GSheet CRUD</h1>
+
+    <!-- Tombol Login (jika belum login) -->
+    <div class="flex space-x-2">
+        <button id="btn-open-login" class="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-600">
+            Login
+        </button>
+        <button id="btn-about" class="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-600">
+            <i class="fas fa-question-circle"></i>
+        </button>
+    </div>
+  </header>
+  <div class="container mx-auto p-4">
+
+    <!-- Layout: Pada desktop, form/filter di kiri dan tabel di kanan; pada mobile, form di atas tabel -->
+    <div class="flex flex-col md:flex-row md:space-x-4">
+      <!-- Kolom kiri: Form Input/Update dan Filter -->
+      <div class="md:w-1/3 mb-6 md:mb-0">
+        <!-- Form Input / Update Data -->
+        <div class="max-w-md mx-auto mb-6">
+          <h2 id="form-title" class="text-xl font-semibold text-center mb-4">Tambah Data</h2>
+          <form id="data-form" class="bg-white p-4 rounded shadow">
+            <!-- Field hidden untuk id (digunakan saat edit) -->
+            <input type="hidden" id="data-id" />
+            <input type="text" id="nama" placeholder="Nama" class="w-full p-2 border rounded mb-3" required />
+            <input type="text" id="deskripsi" placeholder="Deskripsi" class="w-full p-2 border rounded mb-3" required />
+            <input type="date" id="tanggal" class="w-full p-2 border rounded mb-3" required />
+            <input type="url" id="link" placeholder="Link" class="w-full p-2 border rounded mb-3" required />
+            <div class="flex space-x-2">
+              <button type="submit" class="flex-1 bg-green-500 text-white p-2 rounded hover:bg-green-600">Submit</button>
+              <button type="button" id="cancel-edit" class="flex-1 bg-gray-500 text-white p-2 rounded hover:bg-gray-600 hidden">Batal</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="max-w-md mx-auto bg-white p-4 rounded shadow">
+          <h3 class="text-lg font-semibold text-center mb-4">Filter Tanggal</h3>
+          <div class="flex flex-col space-y-3">
+            <input type="date" id="filter-start" class="p-2 border rounded" />
+            <input type="date" id="filter-end" class="p-2 border rounded" />
+            <div class="flex space-x-2">
+              <button id="filter-btn" class="flex-1 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Filter</button>
+              <button id="clear-filter" class="flex-1 bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kolom kanan: Tabel Data -->
+      <div class="md:w-2/3">
+        <div class="overflow-x-auto">
+          <table class="min-w-full bg-white shadow rounded-lg overflow-hidden">
+            <thead class="bg-gray-200">
+              <tr>
+                <th class="py-3 px-4 text-left">Nama</th>
+                <th class="py-3 px-4 text-left">Deskripsi</th>
+                <th class="py-3 px-4 text-left">Tanggal</th>
+                <th class="py-3 px-4 text-left">Link</th>
+                <th class="py-3 px-4 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="data-table" class="divide-y divide-gray-100">
+              <!-- Data akan diisi secara dinamis -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Login -->
+  <div id="login-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white rounded p-6 w-80">
+      <h2 class="text-xl font-semibold text-center mb-4">Login</h2>
+      <form id="modal-login-form">
+        <input type="text" id="modal-username" placeholder="Username" class="w-full p-2 border rounded mb-3" required />
+        <input type="password" id="modal-password" placeholder="Password" class="w-full p-2 border rounded mb-3" required />
+        <div class="flex space-x-2">
+          <button type="submit" class="flex-1 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Login</button>
+          <button type="button" id="modal-close" class="flex-1 bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Batal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal About -->
+<div id="about-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white rounded p-6 w-80">
+        <h2 class="text-xl font-semibold text-center mb-4">About CRUD Google Sheets</h2>
+        <p>Welcome to the CRUD Google Sheets Application! This tool allows you to manage your data efficiently using Google Sheets as a backend.</p>
+        <p>Here is a link to the Google Sheet that is integrated with this application.</p>
+        <p><a href="https://docs.google.com/spreadsheets/d/1zBuDRMdgmDjlNdVHhxZ6YXsklBgMIID8KNgzquGcRWk/" target="_blank" style="color: blue;">GoogleSheetAPI</a></p>
+        <p class="mt-4"><strong>Disclaimer:</strong> The data used in this application is dummy data for demonstration purposes only.</p>
+        <p class="mt-4">© 2025 M. Imam Nur Hidayat All rights reserved. Visit <a href="http://www.profdayat.my.id" target="_blank" style="color: blue;">profdayat.my.id</a> for more information.</p>
+        <button id="modal-close-about" class="bg-gray-500 text-white p-2 rounded hover:bg-gray-600 mt-4">Close</button>
+    </div>
+</div>
+
+  <script>
+    let token = ''; // Token JWT, kosong secara default
+    const apiUrl = '/.netlify/functions/api/credit';
+
+    // Fungsi untuk menampilkan modal login
+    function showLoginModal(callback) {
+      // callback: fungsi yang akan dijalankan setelah login berhasil
+      document.getElementById('login-modal').classList.remove('hidden');
+      // Simpan callback di atribut element (cara sederhana)
+      document.getElementById('login-modal').dataset.callback = callback ? callback.name : '';
+    }
+
+    function hideLoginModal() {
+      document.getElementById('login-modal').classList.add('hidden');
+      // Hapus callback yang tersimpan
+      document.getElementById('login-modal').dataset.callback = '';
+      document.getElementById('modal-login-form').reset();
+    }
+
+    // Proses login dari modal
+    document.getElementById('modal-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('modal-username').value;
+      const password = document.getElementById('modal-password').value;
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (data.token) {
+        token = data.token;
+        hideLoginModal();
+        // Jika ada callback tersimpan, panggil fungsi tersebut
+        if (document.getElementById('login-modal').dataset.callback === 'doSubmit') {
+          doSubmit(); // untuk operasi tambah atau update
+        } else if (document.getElementById('login-modal').dataset.callback === 'doDelete') {
+          // Callback untuk delete dipicu dari fungsi deleteData
+          // Karena id sudah diketahui melalui parameter deleteData
+          // Panggil fungsi deleteData kembali
+          // Catatan: callback delete sebaiknya disimpan secara global jika diperlukan.
+        }
+      } else {
+        alert('Login gagal');
+      }
+    });
+
+    // Tombol close modal login
+    document.getElementById('modal-close').addEventListener('click', hideLoginModal);
+
+    // Tombol untuk membuka modal login secara manual (misal dari header)
+    document.getElementById('btn-open-login').addEventListener('click', () => {
+      showLoginModal();
+    });
+
+    // Function to show the About modal
+    document.getElementById('btn-about').addEventListener('click', () => {
+        document.getElementById('about-modal').classList.remove('hidden');
+    });
+
+    // Function to hide the About modal
+    document.getElementById('modal-close-about').addEventListener('click', () => {
+        document.getElementById('about-modal').classList.add('hidden');
+    });
+
+    // Fungsi load data (read) tidak memerlukan token
+    async function loadData(filterParams = {}) {
+      let query = '';
+      if (filterParams.start_date && filterParams.end_date) {
+        query = `?start_date=${filterParams.start_date}&end_date=${filterParams.end_date}`;
+      }
+      const res = await fetch(apiUrl + '/read' + query);
+      const data = await res.json();
+      const tableBody = document.getElementById('data-table');
+      tableBody.innerHTML = '';
+      data.forEach((item) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-3 px-4">${item.nama}</td>
+          <td class="py-3 px-4">${item.deskripsi}</td>
+          <td class="py-3 px-4">${item.tanggal}</td>
+          <td class="py-3 px-4">
+            <a href="${item.link}" class="text-blue-500 hover:underline" target="_blank">Link</a>
+          </td>
+          <td class="py-3 px-4 text-center">
+            <button onclick='editData(${JSON.stringify(item)})' class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"><i class="fas fa-edit"></i></button>
+            <button onclick="deleteData('${item.id}')" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"><i class="fas fa-trash"></i></button>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // Fungsi submit form untuk tambah/update data
+    async function doSubmit() {
+      const id = document.getElementById('data-id').value;
+      const nama = document.getElementById('nama').value;
+      const deskripsi = document.getElementById('deskripsi').value;
+      const tanggal = document.getElementById('tanggal').value;
+      const link = document.getElementById('link').value;
+      const payload = { nama, deskripsi, tanggal, link };
+
+      let method = 'POST';
+      let url = apiUrl + '/create';
+      if (id) {
+        method = 'PUT';
+        url = apiUrl + '/update/' + id;
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token,
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        resetForm();
+        loadData();
+      } else {
+        alert(result.message);
+      }
+    }
+
+    // Event handler untuk submit form
+    document.getElementById('data-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!token) {
+        // Jika belum login, tampilkan modal login
+        // Simpan callback yang akan dijalankan setelah login
+        document.getElementById('login-modal').dataset.callback = 'doSubmit';
+        showLoginModal();
+      } else {
+        doSubmit();
+      }
+    });
+
+    // Fungsi delete data dengan pengecekan token
+    async function doDelete(id) {
+      const res = await fetch(apiUrl + '/delete/' + id, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      const result = await res.json();
+      if (res.ok) {
+        loadData();
+      } else {
+        alert(result.message);
+      }
+    }
+
+    async function deleteData(id) {
+      if (!token) {
+        // Jika belum login, minta login terlebih dahulu
+        document.getElementById('login-modal').dataset.callback = 'doDelete';
+        // Simpan id yang akan dihapus secara global
+        window._deleteId = id;
+        showLoginModal();
+      } else {
+        if (confirm('Yakin ingin menghapus data?')) {
+          doDelete(id);
+        }
+      }
+    }
+
+    // Fungsi edit data (untuk mengisi form dengan data yang akan diupdate)
+    function editData(item) {
+      if (!token) {
+        // Jika belum login, minta login terlebih dahulu
+        document.getElementById('login-modal').dataset.callback = '';
+        showLoginModal();
+        return;
+      }
+      document.getElementById('form-title').innerText = 'Edit Data';
+      document.getElementById('data-id').value = item.id;
+      document.getElementById('nama').value = item.nama;
+      document.getElementById('deskripsi').value = item.deskripsi;
+      document.getElementById('tanggal').value = item.tanggal;
+      document.getElementById('link').value = item.link;
+      document.getElementById('cancel-edit').classList.remove('hidden');
+    }
+
+    // Fungsi reset form
+    function resetForm() {
+      document.getElementById('form-title').innerText = 'Tambah Data';
+      document.getElementById('data-id').value = '';
+      document.getElementById('data-form').reset();
+      document.getElementById('cancel-edit').classList.add('hidden');
+    }
+
+    document.getElementById('cancel-edit').addEventListener('click', resetForm);
+
+    // Fungsi filter
+    document.getElementById('filter-btn').addEventListener('click', () => {
+      const start_date = document.getElementById('filter-start').value;
+      const end_date = document.getElementById('filter-end').value;
+      loadData({ start_date, end_date });
+    });
+    document.getElementById('clear-filter').addEventListener('click', () => {
+      document.getElementById('filter-start').value = '';
+      document.getElementById('filter-end').value = '';
+      loadData();
+    });
+
+    // Jika modal login dipakai untuk delete, panggil ulang doDelete setelah login
+    // Dengan memeriksa _deleteId
+    async function checkPendingDelete() {
+      if (window._deleteId && token) {
+        await doDelete(window._deleteId);
+        window._deleteId = null;
+      }
+    }
+
+    // Panggil loadData saat halaman dimuat
+    loadData();
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "netlify/functions"
+
+[functions]
+  directory = "netlify/functions"
+
+[functions.api]
+  handler = "api.handler"
+  path = "api"
